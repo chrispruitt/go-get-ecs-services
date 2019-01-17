@@ -15,22 +15,24 @@ import (
 )
 
 var (
-	clusterPtr = flag.String("cluster", "dev", "cluster to get list services and versions")
-	profilePtr = flag.String("profile", "", "set AWS profile, default will discover default profile")
+	clusterPtr     = flag.String("cluster", "dev", "cluster to get list services and versions")
+	profilePtr     = flag.String("profile", "", "set AWS profile, default will discover default profile")
 	diffClusterPtr = flag.String("diffCluster", "", "cluster to compare difference")
 	diffProfilePtr = flag.String("diffProfile", "", "override AWS profile for '-diffCluster' only if a cluster exists in a different AWS account")
-	versionPtr  = flag.Bool("version", false, "show current version")
+	versionPtr     = flag.Bool("version", false, "show current version")
 )
 
 func main() {
 	flag.Parse()
 
 	if *versionPtr {
-		fmt.Println("v0.0.0")
+		fmt.Println("v1.0.0")
 		os.Exit(0)
 	}
 
-	if *diffProfilePtr == "" {*diffProfilePtr = *profilePtr}
+	if *diffProfilePtr == "" {
+		*diffProfilePtr = *profilePtr
+	}
 
 	serviceMap := getServiceVersions(*clusterPtr, *profilePtr)
 
@@ -45,9 +47,7 @@ func main() {
 	}
 }
 
-
-
-func printDiff(x map[string]string, y map[string]string)  {
+func printDiff(x map[string]string, y map[string]string) {
 	emptyStr := ""
 
 	allKeys := append(getMapKeys(x), getMapKeys(y)...)
@@ -63,9 +63,9 @@ func printDiff(x map[string]string, y map[string]string)  {
 			y[key] = emptyStr
 		}
 
-		if x[key] == emptyStr  && y[key] != emptyStr {
+		if x[key] == emptyStr && y[key] != emptyStr {
 			color.Red(fmt.Sprint("-    ", key, ": ", y[key]))
-		} else if x[key] != emptyStr  && y[key] == emptyStr {
+		} else if x[key] != emptyStr && y[key] == emptyStr {
 			color.Green(fmt.Sprint("+    ", key, ": ", x[key]))
 		} else if x[key] != y[key] {
 			color.Yellow(fmt.Sprint("~    ", key, ": ", x[key], " => ", y[key]))
@@ -76,9 +76,9 @@ func printDiff(x map[string]string, y map[string]string)  {
 	}
 }
 
-func printMap(m map[string]string)  {
+func printMap(m map[string]string) {
 	for key, value := range m {
-		fmt.Println("\t" + key + ":", value)
+		fmt.Println("\t"+key+":", value)
 	}
 }
 
@@ -135,7 +135,7 @@ func getServiceVersions(cluster string, profile string) map[string]string {
 
 	for _, service := range services {
 		ssmOpts := ssm.GetParameterInput{
-			Name:           aws.String(fmt.Sprintf("/%s/%s/VERSION", cluster, service)),
+			Name: aws.String(fmt.Sprintf("/%s/%s/VERSION", cluster, service)),
 		}
 		ssmResponse, err := svcSSM.GetParameter(&ssmOpts)
 		check(err)

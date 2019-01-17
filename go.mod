@@ -1,4 +1,4 @@
-module github.com/chrispruitt/get-service-versions
+module github.com/chrispruitt/go-get-ecs-services
 
 require (
 	github.com/aws/aws-sdk-go v1.16.20
