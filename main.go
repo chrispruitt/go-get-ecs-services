@@ -6,7 +6,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecs"
-	"github.com/aws/aws-sdk-go/service/ssm"
 	"github.com/fatih/color"
 	"log"
 	"os"
@@ -26,7 +25,7 @@ func main() {
 	flag.Parse()
 
 	if *versionPtr {
-		fmt.Println("v1.0.0")
+		fmt.Println("v1.2.0")
 		os.Exit(0)
 	}
 
@@ -50,7 +49,7 @@ func main() {
 func printDiff(x map[string]string, y map[string]string) {
 	emptyStr := ""
 
-	allKeys := append(getMapKeys(x), getMapKeys(y)...)
+	allKeys := removeDuplicates(append(getMapKeys(x), getMapKeys(y)...))
 	sort.Strings(allKeys)
 
 	for _, key := range allKeys {
@@ -88,14 +87,6 @@ func check(err error) {
 	}
 }
 
-func parseServiceArnList(service_arn_list []*string) []string {
-	var result []string
-	for _, ptrs := range service_arn_list {
-		result = append(result, strings.Split(*ptrs, "/")[1])
-	}
-	return result
-}
-
 func getMapKeys(x map[string]string) []string {
 	i := 0
 	keys := make([]string, len(x))
@@ -121,7 +112,6 @@ func getServiceVersions(cluster string, profile string) map[string]string {
 	sess := session.Must(session.NewSessionWithOptions(sessOpts))
 
 	svcECS := ecs.New(sess)
-	svcSSM := ssm.New(sess)
 
 	input := &ecs.ListServicesInput{
 		Cluster: aws.String(cluster),
@@ -130,18 +120,39 @@ func getServiceVersions(cluster string, profile string) map[string]string {
 	result, err := svcECS.ListServices(input)
 	check(err)
 
-	services := parseServiceArnList(result.ServiceArns)
-	sort.Strings(services)
-
-	for _, service := range services {
-		ssmOpts := ssm.GetParameterInput{
-			Name: aws.String(fmt.Sprintf("/%s/%s/VERSION", cluster, service)),
+	for _, service := range result.ServiceArns {
+		serviceOpts := ecs.DescribeServicesInput{
+			Cluster:  aws.String(fmt.Sprintf(cluster)),
+			Services: aws.StringSlice([]string{*service}),
 		}
-		ssmResponse, err := svcSSM.GetParameter(&ssmOpts)
+		serviceResponse, err := svcECS.DescribeServices(&serviceOpts)
 		check(err)
 
-		resultMap[service] = *ssmResponse.Parameter.Value
+		serviceName := *serviceResponse.Services[0].ServiceName
+
+		taskDefOpts := ecs.DescribeTaskDefinitionInput{
+			TaskDefinition: aws.String(*serviceResponse.Services[0].TaskDefinition),
+		}
+
+		taskResponse, err := svcECS.DescribeTaskDefinition(&taskDefOpts)
+
+		dockerImage := *taskResponse.TaskDefinition.ContainerDefinitions[0].Image
+
+		resultMap[serviceName] = strings.Split(dockerImage, ":")[1]
+
 	}
 
 	return resultMap
+}
+
+func removeDuplicates(stringSlice []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
+	for _, entry := range stringSlice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
 }
