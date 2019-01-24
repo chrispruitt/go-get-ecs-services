@@ -25,7 +25,7 @@ func main() {
 	flag.Parse()
 
 	if *versionPtr {
-		fmt.Println("v1.2.0")
+		fmt.Println("v1.3.0")
 		os.Exit(0)
 	}
 
@@ -76,8 +76,11 @@ func printDiff(x map[string]string, y map[string]string) {
 }
 
 func printMap(m map[string]string) {
-	for key, value := range m {
-		fmt.Println("\t"+key+":", value)
+
+	keys := getSortedMapKeys(m)
+
+	for _, key := range keys {
+		fmt.Println("\t"+key+":", m[key])
 	}
 }
 
@@ -155,4 +158,14 @@ func removeDuplicates(stringSlice []string) []string {
 		}
 	}
 	return list
+}
+
+func getSortedMapKeys(m map[string]string) []string {
+	var keys []string
+	for k := range m {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+	return keys
 }
